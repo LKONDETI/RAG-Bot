@@ -1,55 +1,93 @@
 # RAGBot
 
-A Retrieval-Augmented Generation (RAG) application with a Python FastAPI backend and React frontend.
+A full-stack Retrieval-Augmented Generation (RAG) application. Upload PDFs or text files, then ask questions — the app retrieves relevant chunks from your documents and generates accurate, cited answers using OpenAI.
+
+**Stack:** FastAPI · LangChain · ChromaDB · OpenAI · React · TypeScript
+
+---
 
 ## Project Structure
 
 ```
 RAGBot/
-├── backend/       # Python FastAPI backend
-└── frontend/      # React frontend
+├── backend/
+│   ├── app/
+│   │   ├── main.py          # FastAPI app, CORS, router registration
+│   │   ├── rag.py           # Core RAG pipeline (ingest, retrieve, answer)
+│   │   └── routers/
+│   │       ├── documents.py # /upload, /documents, /documents/{id}
+│   │       └── query.py     # /query
+│   ├── requirements.txt
+│   └── .env.example
+└── frontend/
+    └── src/
+        ├── api.ts                    # Typed fetch client
+        ├── App.tsx                   # Layout
+        └── components/
+            ├── StatusBar.tsx         # Backend health indicator
+            ├── DocumentPanel.tsx     # Upload + list + delete documents
+            └── ChatPanel.tsx         # Chat UI with source citations
 ```
 
 ---
 
-## `backend/`
+## Getting Started
 
-FastAPI-based Python backend that handles:
-- **Document ingestion** — upload PDFs/text files, chunk and embed them
-- **Vector storage** — stores embeddings in ChromaDB for similarity search
-- **RAG pipeline** — retrieves relevant chunks via LangChain and sends them to OpenAI for answer generation
-- **REST API** — exposes endpoints consumed by the React frontend
+### Prerequisites
+- Python 3.11+
+- Node.js 18+
+- An OpenAI API key
 
-Key libraries: `langchain`, `chromadb`, `openai`, `fastapi`, `uvicorn`, `pypdf2`, `python-dotenv`
-
-### Getting started
+### 1. Backend
 
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate      # Windows: venv\Scripts\activate
+source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env          # add your OPENAI_API_KEY
+cp .env.example .env            # fill in your OPENAI_API_KEY
 uvicorn app.main:app --reload
 ```
 
-API docs available at `http://localhost:8000/docs`
+Backend runs at `http://localhost:8000`
+Swagger UI at `http://localhost:8000/docs`
 
----
-
-## `frontend/`
-
-React frontend that provides:
-- A chat interface for asking questions against uploaded documents
-- A document upload panel for adding files to the knowledge base
-- Real-time display of answers with source citations
-
-### Getting started
+### 2. Frontend
 
 ```bash
 cd frontend
 npm install
-npm run dev
+npm start
 ```
 
-App available at `http://localhost:5173`
+App runs at `http://localhost:3000`
+
+---
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Backend health check |
+| `POST` | `/upload` | Upload a PDF or TXT file |
+| `GET` | `/documents` | List all ingested documents |
+| `DELETE` | `/documents/{doc_id}` | Delete a document and its chunks |
+| `POST` | `/query` | Ask a question, get an answer + sources |
+
+---
+
+## How It Works
+
+1. **Ingest** — uploaded files are split into overlapping chunks (1000 chars, 200 overlap), embedded via OpenAI, and stored in a persistent ChromaDB collection
+2. **Retrieve** — at query time, the question is embedded and the top 4 most similar chunks are fetched from ChromaDB
+3. **Answer** — retrieved chunks are assembled into a context prompt and sent to `gpt-3.5-turbo`, which returns a grounded answer
+4. **Cite** — the frontend displays collapsible source citations (filename + excerpt) alongside each answer
+
+---
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `OPENAI_API_KEY` | Your OpenAI API key |
+| `CHROMA_PERSIST_DIR` | Path to ChromaDB storage (default: `./chroma_db`) |
