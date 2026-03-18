@@ -5,7 +5,7 @@ from io import BytesIO
 from dotenv import load_dotenv
 import chromadb
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 import PyPDF2
 
 load_dotenv()
