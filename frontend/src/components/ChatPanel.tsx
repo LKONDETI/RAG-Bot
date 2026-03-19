@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { QueryResult, Source, askQuestion } from "../api";
 
 interface Message {
@@ -49,7 +50,11 @@ export default function ChatPanel() {
       <div className="messages">
         {messages.map((msg, idx) => (
           <div key={idx} className={`message ${msg.role}`}>
-            <p>{msg.text}</p>
+            {msg.role === "assistant" ? (
+              <ReactMarkdown>{msg.text}</ReactMarkdown>
+            ) : (
+              <p>{msg.text}</p>
+            )}
             {msg.role === "assistant" && msg.sources && msg.sources.length > 0 && (
               <div className="sources">
                 <button className="sources-toggle" onClick={() => toggleSources(idx)}>
