@@ -4,7 +4,10 @@ from io import BytesIO
 
 from dotenv import load_dotenv
 import chromadb
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from chromadb.utils import embedding_functions
+import anthropic
+import requests
+from bs4 import BeautifulSoup
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 import PyPDF2
 
@@ -13,9 +16,11 @@ load_dotenv()
 CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", "./chroma_db")
 
 _chroma_client = chromadb.PersistentClient(path=CHROMA_PERSIST_DIR)
-_collection = _chroma_client.get_or_create_collection("ragbot_docs")
-_embeddings = OpenAIEmbeddings()
-_llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
+_embedding_fn = embedding_functions.DefaultEmbeddingFunction()
+_collection = _chroma_client.get_or_create_collection(
+    "ragbot_docs", embedding_function=_embedding_fn
+)
+_anthropic = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 _splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 
 
@@ -31,11 +36,11 @@ def ingest_file(file_bytes: bytes, filename: str) -> dict:
     text = _extract_text(file_bytes, filename)
     chunks = _splitter.split_text(text)
 
-    embeddings = _embeddings.embed_documents(chunks)
     ids = [f"{doc_id}_{i}" for i in range(len(chunks))]
     metadatas = [{"doc_id": doc_id, "filename": filename, "chunk": i} for i in range(len(chunks))]
 
-    _collection.add(ids=ids, embeddings=embeddings, documents=chunks, metadatas=metadatas)
+    # ChromaDB's DefaultEmbeddingFunction handles embeddings automatically
+    _collection.add(ids=ids, documents=chunks, metadatas=metadatas)
 
     return {"doc_id": doc_id, "filename": filename, "chunks": len(chunks)}
 
@@ -56,10 +61,35 @@ def delete_document(doc_id: str) -> None:
         _collection.delete(ids=result["ids"])
 
 
+def ingest_url(url: str) -> dict:
+    response = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+    response.raise_for_status()
+
+    content_type = response.headers.get("content-type", "")
+    if "application/pdf" in content_type:
+        return ingest_file(response.content, url.split("/")[-1] or "page.pdf")
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    for tag in soup(["script", "style", "nav", "footer", "header"]):
+        tag.decompose()
+    text = soup.get_text(separator="\n", strip=True)
+
+    doc_id = str(uuid.uuid4())
+    # Use the page title or URL as the display name
+    title = soup.title.string.strip() if soup.title and soup.title.string else url
+    chunks = _splitter.split_text(text)
+
+    ids = [f"{doc_id}_{i}" for i in range(len(chunks))]
+    metadatas = [{"doc_id": doc_id, "filename": title, "chunk": i, "url": url} for i in range(len(chunks))]
+
+    _collection.add(ids=ids, documents=chunks, metadatas=metadatas)
+
+    return {"doc_id": doc_id, "filename": title, "chunks": len(chunks)}
+
+
 def answer_query(question: str) -> dict:
-    question_embedding = _embeddings.embed_query(question)
     results = _collection.query(
-        query_embeddings=[question_embedding],
+        query_texts=[question],
         n_results=4,
         include=["documents", "metadatas"],
     )
@@ -78,8 +108,12 @@ def answer_query(question: str) -> dict:
         f"Question: {question}\n\nAnswer:"
     )
 
-    response = _llm.invoke(prompt)
-    answer = response.content
+    response = _anthropic.messages.create(
+        model="claude-opus-4-6",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    answer = response.content[0].text
 
     sources = [
         {"filename": m["filename"], "excerpt": d[:200]}

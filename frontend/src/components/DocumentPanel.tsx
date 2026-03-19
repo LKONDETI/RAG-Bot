@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Document, deleteDocument, listDocuments, uploadDocument } from "../api";
+import { Document, deleteDocument, ingestUrl, listDocuments, uploadDocument } from "../api";
 
 export default function DocumentPanel() {
   const [docs, setDocs] = useState<Document[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [urlInput, setUrlInput] = useState("");
+  const [ingesting, setIngesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -29,6 +31,21 @@ export default function DocumentPanel() {
     }
   };
 
+  const handleIngestUrl = async () => {
+    if (!urlInput.trim()) return;
+    setIngesting(true);
+    setError(null);
+    try {
+      await ingestUrl(urlInput.trim());
+      await refresh();
+      setUrlInput("");
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setIngesting(false);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     try {
       await deleteDocument(id);
@@ -41,12 +58,28 @@ export default function DocumentPanel() {
   return (
     <div className="panel">
       <h2>Documents</h2>
+
       <div className="upload-row">
         <input ref={fileRef} type="file" accept=".pdf,.txt" />
         <button onClick={handleUpload} disabled={uploading}>
           {uploading ? "Uploading…" : "Upload"}
         </button>
       </div>
+
+      <div className="upload-row" style={{ marginTop: "8px" }}>
+        <input
+          type="url"
+          placeholder="Paste a URL to ingest…"
+          value={urlInput}
+          onChange={(e) => setUrlInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleIngestUrl()}
+          style={{ flex: 1 }}
+        />
+        <button onClick={handleIngestUrl} disabled={ingesting || !urlInput.trim()}>
+          {ingesting ? "Loading…" : "Add URL"}
+        </button>
+      </div>
+
       {error && <p className="error">{error}</p>}
       <ul className="doc-list">
         {docs.map((doc) => (

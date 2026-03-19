@@ -44,6 +44,20 @@ export async function deleteDocument(id: string): Promise<void> {
   if (!res.ok) throw new Error("Delete failed");
 }
 
+export async function ingestUrl(url: string): Promise<Document> {
+  const res = await fetch(`${BASE}/ingest-url`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || "Failed to ingest URL");
+  }
+  const data = await res.json();
+  return { id: data.doc_id, filename: data.filename };
+}
+
 export async function askQuestion(question: string): Promise<QueryResult> {
   const res = await fetch(`${BASE}/query`, {
     method: "POST",

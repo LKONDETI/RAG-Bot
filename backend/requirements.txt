@@ -1,9 +1,10 @@
-langchain
-langchain-openai
-langchain-community
+anthropic
+langchain-text-splitters
 chromadb
-openai
 fastapi
 uvicorn[standard]
 python-dotenv
 PyPDF2
+python-multipart
+requests
+beautifulsoup4
