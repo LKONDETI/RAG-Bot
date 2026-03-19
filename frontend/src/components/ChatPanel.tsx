@@ -1,5 +1,6 @@
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { QueryResult, Source, askQuestion } from "../api";
 
 interface Message {
@@ -51,7 +52,7 @@ export default function ChatPanel() {
         {messages.map((msg, idx) => (
           <div key={idx} className={`message ${msg.role}`}>
             {msg.role === "assistant" ? (
-              <ReactMarkdown>{msg.text}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
             ) : (
               <p>{msg.text}</p>
             )}
