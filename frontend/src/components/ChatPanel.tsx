@@ -1,16 +1,15 @@
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { QueryResult, Source, askQuestion } from "../api";
+import { QueryResult, askQuestion } from "../api";
+import { Message } from "../App";
 
-interface Message {
-  role: "user" | "assistant";
-  text: string;
-  sources?: Source[];
+interface Props {
+  messages: Message[];
+  onMessagesChange: (messages: Message[]) => void;
 }
 
-export default function ChatPanel() {
-  const [messages, setMessages] = useState<Message[]>([]);
+export default function ChatPanel({ messages, onMessagesChange }: Props) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [expandedSources, setExpandedSources] = useState<Set<number>>(new Set());
@@ -19,17 +18,18 @@ export default function ChatPanel() {
     const question = input.trim();
     if (!question || loading) return;
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", text: question }]);
+    const updated: Message[] = [...messages, { role: "user", text: question }];
+    onMessagesChange(updated);
     setLoading(true);
     try {
       const result: QueryResult = await askQuestion(question);
-      setMessages((prev) => [
-        ...prev,
+      onMessagesChange([
+        ...updated,
         { role: "assistant", text: result.answer, sources: result.sources },
       ]);
     } catch {
-      setMessages((prev) => [
-        ...prev,
+      onMessagesChange([
+        ...updated,
         { role: "assistant", text: "Error: could not get a response." },
       ]);
     } finally {
