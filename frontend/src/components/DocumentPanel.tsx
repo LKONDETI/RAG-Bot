@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Document, deleteDocument, ingestUrl, listDocuments, uploadDocument } from "../api";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function DocumentPanel() {
+  const { getAuthHeaders } = useAuth();
   const [docs, setDocs] = useState<Document[]>([]);
   const [uploading, setUploading] = useState(false);
   const [urlInput, setUrlInput] = useState("");
@@ -9,10 +11,11 @@ export default function DocumentPanel() {
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const refresh = () => listDocuments().then(setDocs).catch(() => {});
+  const refresh = () => listDocuments(getAuthHeaders()).then(setDocs).catch(() => {});
 
   useEffect(() => {
     refresh();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleUpload = async () => {
@@ -21,7 +24,7 @@ export default function DocumentPanel() {
     setUploading(true);
     setError(null);
     try {
-      await uploadDocument(file);
+      await uploadDocument(file, getAuthHeaders());
       await refresh();
       if (fileRef.current) fileRef.current.value = "";
     } catch (e: any) {
@@ -36,7 +39,7 @@ export default function DocumentPanel() {
     setIngesting(true);
     setError(null);
     try {
-      await ingestUrl(urlInput.trim());
+      await ingestUrl(urlInput.trim(), getAuthHeaders());
       await refresh();
       setUrlInput("");
     } catch (e: any) {
@@ -48,7 +51,7 @@ export default function DocumentPanel() {
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteDocument(id);
+      await deleteDocument(id, getAuthHeaders());
       await refresh();
     } catch (e: any) {
       setError(e.message);

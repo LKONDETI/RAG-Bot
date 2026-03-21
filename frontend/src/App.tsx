@@ -4,6 +4,8 @@ import ChatPanel from "./components/ChatPanel";
 import ChatSidebar from "./components/ChatSidebar";
 import DocumentPanel from "./components/DocumentPanel";
 import StatusBar from "./components/StatusBar";
+import LoginPage from "./components/LoginPage";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { Source } from "./api";
 
 export interface Message {
@@ -19,30 +21,40 @@ export interface Chat {
   createdAt: number;
 }
 
-const STORAGE_KEY = "ragbot_chats";
-
 function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 
-function loadChats(): Chat[] {
+function storageKey(userId: string) {
+  return `ragbot_chats_${userId}`;
+}
+
+function loadChats(userId: string): Chat[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey(userId));
     if (raw) return JSON.parse(raw);
   } catch {}
   return [];
 }
 
-function App() {
-  const [chats, setChats] = useState<Chat[]>(() => loadChats());
+function AppInner() {
+  const { user } = useAuth();
+
+  if (!user) return <LoginPage />;
+
+  return <AppMain userId={user.userId} />;
+}
+
+function AppMain({ userId }: { userId: string }) {
+  const [chats, setChats] = useState<Chat[]>(() => loadChats(userId));
   const [activeChatId, setActiveChatId] = useState<string>(() => {
-    const saved = loadChats();
+    const saved = loadChats(userId);
     return saved.length > 0 ? saved[0].id : genId();
   });
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
-  }, [chats]);
+    localStorage.setItem(storageKey(userId), JSON.stringify(chats));
+  }, [chats, userId]);
 
   const activeMessages = chats.find((c) => c.id === activeChatId)?.messages ?? [];
 
@@ -58,7 +70,6 @@ function App() {
           c.id === activeChatId ? { ...c, messages } : c
         );
       }
-      // First message in a new chat — create the entry
       const firstUser = messages.find((m) => m.role === "user");
       const title = firstUser ? firstUser.text.slice(0, 40) : "New Chat";
       return [{ id: activeChatId, title, messages, createdAt: Date.now() }, ...prev];
@@ -85,6 +96,14 @@ function App() {
         />
       </div>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
   );
 }
 

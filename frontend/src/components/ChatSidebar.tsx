@@ -1,4 +1,5 @@
 import { Chat } from "../App";
+import { useAuth } from "../contexts/AuthContext";
 
 interface Props {
   chats: Chat[];
@@ -8,6 +9,8 @@ interface Props {
 }
 
 export default function ChatSidebar({ chats, activeChatId, onNewChat, onSelectChat }: Props) {
+  const { user, logout } = useAuth();
+
   return (
     <div className="chat-sidebar">
       <div className="chat-sidebar-divider" />
@@ -26,6 +29,10 @@ export default function ChatSidebar({ chats, activeChatId, onNewChat, onSelectCh
           </li>
         ))}
       </ul>
+      <div className="user-footer">
+        <span className="user-footer-name">{user?.username}</span>
+        <button className="logout-btn" onClick={logout}>Logout</button>
+      </div>
     </div>
   );
 }

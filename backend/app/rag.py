@@ -31,22 +31,26 @@ def _extract_text(file_bytes: bytes, filename: str) -> str:
     return file_bytes.decode("utf-8", errors="replace")
 
 
-def ingest_file(file_bytes: bytes, filename: str) -> dict:
+def ingest_file(file_bytes: bytes, filename: str, user_id: str) -> dict:
     doc_id = str(uuid.uuid4())
     text = _extract_text(file_bytes, filename)
     chunks = _splitter.split_text(text)
 
     ids = [f"{doc_id}_{i}" for i in range(len(chunks))]
-    metadatas = [{"doc_id": doc_id, "filename": filename, "chunk": i} for i in range(len(chunks))]
+    metadatas = [
+        {"doc_id": doc_id, "filename": filename, "chunk": i, "user_id": user_id}
+        for i in range(len(chunks))
+    ]
 
-    # ChromaDB's DefaultEmbeddingFunction handles embeddings automatically
     _collection.add(ids=ids, documents=chunks, metadatas=metadatas)
 
     return {"doc_id": doc_id, "filename": filename, "chunks": len(chunks)}
 
 
-def list_documents() -> list[dict]:
-    result = _collection.get(include=["metadatas"])
+def list_documents(user_id: str) -> list[dict]:
+    result = _collection.get(
+        where={"user_id": user_id}, include=["metadatas"]
+    )
     seen: dict[str, str] = {}
     for meta in result["metadatas"]:
         doc_id = meta["doc_id"]
@@ -55,19 +59,22 @@ def list_documents() -> list[dict]:
     return [{"id": doc_id, "filename": filename} for doc_id, filename in seen.items()]
 
 
-def delete_document(doc_id: str) -> None:
-    result = _collection.get(where={"doc_id": doc_id}, include=["metadatas"])
+def delete_document(doc_id: str, user_id: str) -> None:
+    result = _collection.get(
+        where={"$and": [{"doc_id": doc_id}, {"user_id": user_id}]},
+        include=["metadatas"],
+    )
     if result["ids"]:
         _collection.delete(ids=result["ids"])
 
 
-def ingest_url(url: str) -> dict:
+def ingest_url(url: str, user_id: str) -> dict:
     response = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
     response.raise_for_status()
 
     content_type = response.headers.get("content-type", "")
     if "application/pdf" in content_type:
-        return ingest_file(response.content, url.split("/")[-1] or "page.pdf")
+        return ingest_file(response.content, url.split("/")[-1] or "page.pdf", user_id)
 
     soup = BeautifulSoup(response.text, "html.parser")
     for tag in soup(["script", "style", "nav", "footer", "header"]):
@@ -75,22 +82,33 @@ def ingest_url(url: str) -> dict:
     text = soup.get_text(separator="\n", strip=True)
 
     doc_id = str(uuid.uuid4())
-    # Use the page title or URL as the display name
     title = soup.title.string.strip() if soup.title and soup.title.string else url
     chunks = _splitter.split_text(text)
 
     ids = [f"{doc_id}_{i}" for i in range(len(chunks))]
-    metadatas = [{"doc_id": doc_id, "filename": title, "chunk": i, "url": url} for i in range(len(chunks))]
+    metadatas = [
+        {"doc_id": doc_id, "filename": title, "chunk": i, "url": url, "user_id": user_id}
+        for i in range(len(chunks))
+    ]
 
     _collection.add(ids=ids, documents=chunks, metadatas=metadatas)
 
     return {"doc_id": doc_id, "filename": title, "chunks": len(chunks)}
 
 
-def answer_query(question: str) -> dict:
+def answer_query(question: str, user_id: str) -> dict:
+    # Count user's docs first to give a better error if empty
+    user_docs = _collection.get(where={"user_id": user_id}, include=["metadatas"])
+    if not user_docs["ids"]:
+        return {
+            "answer": "You have no documents uploaded yet. Please upload a document first.",
+            "sources": [],
+        }
+
     results = _collection.query(
         query_texts=[question],
-        n_results=4,
+        n_results=min(4, len(user_docs["ids"])),
+        where={"user_id": user_id},
         include=["documents", "metadatas"],
     )
 
