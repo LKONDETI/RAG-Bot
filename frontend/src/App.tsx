@@ -69,13 +69,15 @@ function App() {
     <div className="app">
       <StatusBar />
       <div className="main-layout">
-        <DocumentPanel />
-        <ChatSidebar
-          chats={chats}
-          activeChatId={activeChatId}
-          onNewChat={newChat}
-          onSelectChat={setActiveChatId}
-        />
+        <div className="left-col">
+          <DocumentPanel />
+          <ChatSidebar
+            chats={chats}
+            activeChatId={activeChatId}
+            onNewChat={newChat}
+            onSelectChat={setActiveChatId}
+          />
+        </div>
         <ChatPanel
           key={activeChatId}
           messages={activeMessages}

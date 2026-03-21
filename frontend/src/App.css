@@ -55,11 +55,20 @@ body {
   padding-bottom: 8px;
 }
 
-/* Document panel */
-.main-layout > .panel:first-child {
+/* Left column — documents + chat history */
+.left-col {
   width: 300px;
   min-width: 260px;
   border-right: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: #fff;
+}
+
+.left-col > .panel {
+  overflow-y: visible;
+  flex-shrink: 0;
 }
 
 .upload-row {
@@ -132,38 +141,31 @@ body {
   margin-bottom: 8px;
 }
 
-/* Chat sidebar */
+/* Chat sidebar — sits below DocumentPanel in the left column */
 .chat-sidebar {
-  width: 200px;
-  min-width: 160px;
-  border-right: 1px solid #ddd;
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   overflow-y: auto;
 }
 
-.chat-sidebar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.chat-sidebar-divider {
+  border-top: 1px solid #eee;
   margin-bottom: 12px;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 8px;
-}
-
-.chat-sidebar-header h2 {
-  margin-bottom: 0;
-  border-bottom: none;
-  padding-bottom: 0;
 }
 
 .new-chat-btn {
-  padding: 4px 10px;
+  width: 100%;
+  padding: 10px 0;
   background: #0d6efd;
   color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 12px;
-  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
 }
 
 .new-chat-btn:hover {

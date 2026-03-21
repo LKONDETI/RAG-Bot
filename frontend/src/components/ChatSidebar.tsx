@@ -9,11 +9,9 @@ interface Props {
 
 export default function ChatSidebar({ chats, activeChatId, onNewChat, onSelectChat }: Props) {
   return (
-    <div className="panel chat-sidebar">
-      <div className="chat-sidebar-header">
-        <h2>Chats</h2>
-        <button className="new-chat-btn" onClick={onNewChat}>+ New</button>
-      </div>
+    <div className="chat-sidebar">
+      <div className="chat-sidebar-divider" />
+      <button className="new-chat-btn" onClick={onNewChat}>+ New Chat</button>
       <ul className="chat-list">
         {chats.length === 0 && (
           <li className="chat-list-empty">No saved chats yet</li>
