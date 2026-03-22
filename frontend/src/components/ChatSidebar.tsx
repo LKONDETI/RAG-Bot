@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Chat } from "../App";
 import { useAuth } from "../contexts/AuthContext";
+import AuthModal from "./AuthModal";
 
 interface Props {
   chats: Chat[];
@@ -10,6 +12,7 @@ interface Props {
 
 export default function ChatSidebar({ chats, activeChatId, onNewChat, onSelectChat }: Props) {
   const { user, logout } = useAuth();
+  const [showModal, setShowModal] = useState(false);
 
   return (
     <div className="chat-sidebar">
@@ -29,10 +32,21 @@ export default function ChatSidebar({ chats, activeChatId, onNewChat, onSelectCh
           </li>
         ))}
       </ul>
+
       <div className="user-footer">
-        <span className="user-footer-name">{user?.username}</span>
-        <button className="logout-btn" onClick={logout}>Logout</button>
+        {user ? (
+          <>
+            <span className="user-footer-name">{user.username}</span>
+            <button className="logout-btn" onClick={logout}>Logout</button>
+          </>
+        ) : (
+          <button className="signin-btn" onClick={() => setShowModal(true)}>
+            Login / Sign Up
+          </button>
+        )}
       </div>
+
+      {showModal && <AuthModal onClose={() => setShowModal(false)} />}
     </div>
   );
 }

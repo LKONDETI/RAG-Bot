@@ -4,7 +4,6 @@ import ChatPanel from "./components/ChatPanel";
 import ChatSidebar from "./components/ChatSidebar";
 import DocumentPanel from "./components/DocumentPanel";
 import StatusBar from "./components/StatusBar";
-import LoginPage from "./components/LoginPage";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { Source } from "./api";
 
@@ -38,37 +37,35 @@ function loadChats(userId: string): Chat[] {
 }
 
 function AppInner() {
-  const { user } = useAuth();
+  const { user, guestId } = useAuth();
+  const chatUserId = user ? user.userId : `guest_${guestId}`;
 
-  if (!user) return <LoginPage />;
-
-  return <AppMain userId={user.userId} />;
-}
-
-function AppMain({ userId }: { userId: string }) {
-  const [chats, setChats] = useState<Chat[]>(() => loadChats(userId));
+  const [chats, setChats] = useState<Chat[]>(() => loadChats(chatUserId));
   const [activeChatId, setActiveChatId] = useState<string>(() => {
-    const saved = loadChats(userId);
+    const saved = loadChats(chatUserId);
     return saved.length > 0 ? saved[0].id : genId();
   });
 
+  // Reload chats when the user logs in or out
   useEffect(() => {
-    localStorage.setItem(storageKey(userId), JSON.stringify(chats));
-  }, [chats, userId]);
+    const saved = loadChats(chatUserId);
+    setChats(saved);
+    setActiveChatId(saved.length > 0 ? saved[0].id : genId());
+  }, [chatUserId]);
+
+  useEffect(() => {
+    localStorage.setItem(storageKey(chatUserId), JSON.stringify(chats));
+  }, [chats, chatUserId]);
 
   const activeMessages = chats.find((c) => c.id === activeChatId)?.messages ?? [];
 
-  const newChat = () => {
-    setActiveChatId(genId());
-  };
+  const newChat = () => setActiveChatId(genId());
 
   const updateMessages = (messages: Message[]) => {
     setChats((prev) => {
       const existing = prev.find((c) => c.id === activeChatId);
       if (existing) {
-        return prev.map((c) =>
-          c.id === activeChatId ? { ...c, messages } : c
-        );
+        return prev.map((c) => (c.id === activeChatId ? { ...c, messages } : c));
       }
       const firstUser = messages.find((m) => m.role === "user");
       const title = firstUser ? firstUser.text.slice(0, 40) : "New Chat";
