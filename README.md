@@ -1,8 +1,8 @@
 # RAGBot
 
-A full-stack Retrieval-Augmented Generation (RAG) application. Upload PDFs or text files, ingest URLs, then ask questions — the app retrieves relevant chunks from your documents and generates accurate, cited answers using OpenAI. Supports user accounts with JWT authentication, guest access, and persistent chat history.
+A full-stack Retrieval-Augmented Generation (RAG) application. Upload PDFs or text files, ingest URLs, then ask questions — the app retrieves relevant chunks from your documents and generates accurate, cited answers using Claude. Supports user accounts with JWT authentication, guest access, and persistent chat history.
 
-**Stack:** FastAPI · LangChain · ChromaDB · OpenAI · React · TypeScript
+**Stack:** FastAPI · LangChain · ChromaDB · Anthropic Claude · React · TypeScript
 
 ---
 
@@ -53,7 +53,7 @@ cd backend
 /opt/homebrew/bin/python3.11 -m venv venv   # use Homebrew Python on Apple Silicon
 source venv/bin/activate                     # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env                         # fill in OPENAI_API_KEY and JWT_SECRET
+cp .env.example .env                         # fill in ANTHROPIC_API_KEY and JWT_SECRET
 uvicorn app.main:app --reload
 ```
 
@@ -77,7 +77,7 @@ App runs at `http://localhost:3000`
 - **User authentication** — register and log in with a username and password; sessions persist via JWT stored in `localStorage`
 - **Guest access** — use the app without an account; isolated by a browser-generated guest ID
 - **Document ingestion** — upload PDFs or `.txt` files, or paste a URL to ingest web content
-- **RAG-powered answers** — questions are answered using retrieved document chunks as context
+- **RAG-powered answers** — questions are answered using retrieved document chunks as context, powered by `claude-opus-4-6`
 - **Source citations** — collapsible source list (filename + excerpt) shown alongside each answer
 - **Chat history** — multiple chat sessions, saved to `localStorage` and restored on refresh
 - **New chat** — start a fresh conversation at any time; previous chats remain in the sidebar
@@ -102,9 +102,9 @@ App runs at `http://localhost:3000`
 ## How It Works
 
 1. **Auth** — users register/login via `/auth/register` and `/auth/login`; a JWT is issued and sent as a Bearer token on subsequent requests. Unauthenticated users are treated as guests identified by a `X-Guest-ID` header.
-2. **Ingest** — uploaded files or URLs are split into overlapping chunks (1000 chars, 200 overlap), embedded via OpenAI, and stored in a persistent ChromaDB collection
+2. **Ingest** — uploaded files or URLs are split into overlapping chunks (1000 chars, 200 overlap), embedded via ChromaDB's default embedding function, and stored in a persistent ChromaDB collection
 3. **Retrieve** — at query time, the question is embedded and the top 4 most similar chunks are fetched from ChromaDB
-4. **Answer** — retrieved chunks are assembled into a context prompt and sent to `gpt-3.5-turbo`, which returns a grounded answer
+4. **Answer** — retrieved chunks are assembled into a context prompt and sent to `claude-opus-4-6`, which returns a grounded answer
 5. **Cite** — the frontend displays collapsible source citations (filename + excerpt) alongside each answer
 6. **Persist** — chat sessions are stored in `localStorage` so history survives page refreshes
 
@@ -114,7 +114,7 @@ App runs at `http://localhost:3000`
 
 | Variable | Description |
 |----------|-------------|
-| `OPENAI_API_KEY` | Your OpenAI API key |
+| `ANTHROPIC_API_KEY` | Your Anthropic API key |
 | `JWT_SECRET` | Secret key used to sign JWT tokens |
 | `CHROMA_PERSIST_DIR` | Path to ChromaDB storage (default: `./chroma_db`) |
 
